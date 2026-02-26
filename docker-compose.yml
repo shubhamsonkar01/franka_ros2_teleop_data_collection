@@ -2,9 +2,9 @@ x-teleop-config:
   pairs:
     - namespace: franka_ros2_teleop
       leader:
-        robot_ip: enter_leader_ip_here
+        robot_ip: 192.168.1.12
       follower:
-        robot_ip: enter_follower_ip_here
+        robot_ip: 192.168.1.15
 
 services:
   franka_ros2_teleop:

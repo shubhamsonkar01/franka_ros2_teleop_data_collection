@@ -1,0 +1,44 @@
+# franka_data_collector configuration
+# Copy and modify this file for your setup
+# -----------------------------------------------
+# HOW TO FIND YOUR follower_namespace:
+#   Look at your fr3_teleop_config.yaml pairs section.
+#   The follower namespace = <base_namespace (if set)>/<pair namespace>/follower
+#
+#   Example 1 - fr3_teleop_config.yaml with:
+#     pairs:
+#       - namespace: franka_teleop
+#   => follower_namespace: franka_teleop/follower
+#
+#   Example 2 - fr3_duo_teleop_config.yaml with:
+#     namespace: fr3_duo
+#     pairs:
+#       - namespace: left
+#   => follower_namespace: fr3_duo/left/follower
+#
+#   Example 3 - docker-compose.yml default:
+#     namespace: franka_ros2_teleop
+#   => follower_namespace: franka_ros2_teleop/follower
+
+franka_data_collector:
+  ros__parameters:
+
+    # Namespace of the follower robot (MUST match your teleop config)
+    follower_namespace: "franka_teleop/follower"
+
+    # Where to save the output files
+    output_dir: "/tmp/franka_data"
+
+    # File formats to save
+    save_csv: true   # Human-readable, larger files
+    save_npy: true   # NumPy binary, faster to load in Python
+
+    # Buffer size - auto-flush to disk after this many samples
+    # At 1kHz this is ~100 seconds worth of data before a flush
+    buffer_size: 100000
+
+    # Auto-save every N seconds (0 to disable, data still saved on shutdown)
+    auto_save_interval_sec: 30.0
+
+    # Set to false if franka_msgs is not available (disables EE pose + cart vel + ext torques)
+    use_franka_robot_state: true

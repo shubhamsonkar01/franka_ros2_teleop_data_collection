@@ -1,0 +1,61 @@
+x-teleop-config:
+  pairs:
+    - namespace: franka_ros2_teleop
+      leader:
+        robot_ip: 192.168.1.12
+      follower:
+        robot_ip: 192.168.1.15
+
+services:
+  # ── Teleoperation service (identical to original docker-compose.yml) ──────
+  franka_ros2_teleop:
+    image: ghcr.io/frankarobotics/franka_ros2_teleop:main
+    build:
+      context: .
+      target: application
+    volumes:
+      - type: bind
+        source: ./docker-compose.yml
+        target: /config.yml
+    privileged: true
+    network_mode: host
+    cap_add:
+      - SYS_NICE
+      - NET_ADMIN
+    ulimits:
+      rtprio:
+        soft: 99
+        hard: 99
+      memlock:
+        soft: 102400
+        hard: 102400
+    environment:
+      RMW_IMPLEMENTATION: ${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-230}
+
+  # ── Data collector service ────────────────────────────────────────────────
+  franka_data_collector:
+    build:
+      context: .
+      dockerfile: Dockerfile.updated
+      target: application
+    network_mode: host
+    volumes:
+      - type: bind
+        source: ./franka_data
+        target: /tmp/franka_data
+    environment:
+      RMW_IMPLEMENTATION: ${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-230}
+    depends_on:
+      - franka_ros2_teleop
+    command: >
+      bash -lc "
+        sleep 10 &&
+        ros2 launch franka_data_collector data_collector.launch.py
+          follower_namespace:=franka_ros2_teleop/follower
+          output_dir:=/tmp/franka_data
+          save_csv:=true
+          save_npy:=true
+          auto_save_interval_sec:=30.0
+      "
