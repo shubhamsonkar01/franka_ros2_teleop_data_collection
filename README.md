@@ -1,8 +1,8 @@
 <div align="center">
 
-<h1>🤖 franka_ros2_teleop</h1>
+<h1>🤖 franka_ros2_teleop_data_collection</h1>
 
-<p><strong>High-frequency leader–follower teleoperation framework for Franka FR3 robots with learning-ready state logging at ~1 kHz.</strong></p>
+<p><strong>High-frequency leader–follower teleoperation framework for Franka FR3 robots with data collection ~1 kHz using dokcer.</strong></p>
 
 [![ROS 2 Humble](https://img.shields.io/badge/ROS2-Humble-blue?logo=ros&logoColor=white)](https://docs.ros.org/en/humble/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
@@ -14,6 +14,8 @@
 
 *Kinesthetic teaching · End-effector velocity · Gripper recording · Docker-first · ML-ready*
 
+This repository is built on the top of the frankarobotics original repository
+
 </div>
 
 ---
@@ -24,7 +26,6 @@
 - [What This Repository Does](#-what-this-repository-does)
 - [Design Principles](#-design-principles)
 - [Repository Structure](#-repository-structure)
-- [Where to Place the New Files](#-where-to-place-the-new-files)
 - [Prerequisites — What You Need Before Starting](#-prerequisites--what-you-need-before-starting)
 - [Hardware Setup](#-hardware-setup)
 - [Quick Start — Step by Step](#-quick-start--step-by-step)
@@ -46,9 +47,7 @@ High-frequency kinesthetic demonstrations are critical for:
 
 - Learning stable manipulation policies from human demonstration
 - Modeling human teaching intent and motion primitives
-- Neural ODE trajectory modeling of continuous robot dynamics
-- Safe control synthesis using CLF-CBF constraints
-- Imitation learning and behaviour cloning pipelines
+- Imitation learning pipelines
 
 This framework captures physically consistent robot state at ~1 kHz during gravity-compensation teaching — ensuring downstream learning algorithms receive **high-fidelity, temporally dense state data** including correct end-effector velocity (computed via finite differences, not the controller's desired velocity which is always zero during kinesthetic teaching).
 
@@ -64,10 +63,10 @@ The follower robot mirrors your motion in real time
 Every joint angle, torque, EE pose, EE velocity, and gripper state
 is recorded at ~1 kHz to CSV and NumPy files
         ↓
-Files are ready for imitation learning / Neural ODE / CLF-CBF pipelines
+Files are ready for imitation learning methods and other pipelines which requires data
 ```
 
-In one diagram:
+In summary:
 
 ```
   ┌─────────────┐   teleoperation   ┌──────────────┐
@@ -103,8 +102,8 @@ franka_ros2_teleop/
 │
 ├── 📂 franka_data_collector/          ROS 2 data collection package
 │   ├── franka_data_collector/
-│   │   ├── data_collector_node.py     ⭐ Main collector (velocity fix + gripper)
-│   │   └── __init__.py
+│   │   ├── data_collector_node.py     
+│   │   └── data_collector_node_with_vel_node.py 
 │   ├── launch/
 │   │   └── data_collector.launch.py   Launch file
 │   ├── config/
@@ -113,9 +112,9 @@ franka_ros2_teleop/
 │   └── package.xml
 │
 ├── 📂 Scripts/                        Utility scripts
-│   └── gripper_controller.py          ⭐ Interactive gripper open/close
+│   └── gripper_controller.py          *Interactive gripper open/close
 │
-├── 📂 franka_data/                    Recorded data saved here
+├── 📂 franka_data/                    *Recorded data saved here
 │   └── *.npy / *.csv
 │
 ├── 📂 outputs/                        Trajectory visualizations
@@ -142,42 +141,15 @@ franka_ros2_teleop/
 
 ---
 
-## 📂 Where to Place the New Files
-
-If you are updating an existing clone, two files need to be placed correctly:
-
-```
-franka_ros2_teleop/
-│
-├── franka_data_collector/
-│   └── franka_data_collector/
-│       └── data_collector_node.py    ← 🔴 REPLACE the existing file here
-│
-└── Scripts/
-    └── gripper_controller.py         ← 🟢 Place here (create folder if missing)
-```
-
-```bash
-# Replace the collector node
-cp data_collector_node.py \
-   franka_ros2_teleop/franka_data_collector/franka_data_collector/data_collector_node.py
-
-# Create the Scripts folder and place the gripper controller
-mkdir -p franka_ros2_teleop/Scripts
-cp gripper_controller.py franka_ros2_teleop/Scripts/gripper_controller.py
-```
-
----
-
 ## ✅ Prerequisites — What You Need Before Starting
 
-> **If you are new to this stack**, go through this checklist before touching any code.
+> **If you are new to this stack**, go through this checklist.
 
 ### Hardware
 
 - [ ] 2× Franka FR3 robots (or 1 for single-arm mode)
 - [ ] 1× PC or workstation connected to both robots over Ethernet
-- [ ] Both robots powered on — indicator light should be **white** or **blue**
+- [ ] Both robots powered on — indicator light should be **Green** (FCI Mode activated)
 
 ### Software on your PC
 
@@ -196,8 +168,8 @@ cp gripper_controller.py franka_ros2_teleop/Scripts/gripper_controller.py
 Your PC must be able to reach both robots:
 
 ```bash
-ping 192.168.1.12   # leader — should reply with round-trip times
-ping 192.168.1.15   # follower — same
+ping 192.168.1.xx (robot_ip)  # leader — should reply with round-trip times
+ping 192.168.1.yy (robot_ip)  # follower — same
 ```
 
 If either fails, check your Ethernet cable and confirm your PC's IP is in the same subnet (e.g. `192.168.1.x`).
@@ -206,10 +178,10 @@ If either fails, check your Ethernet cable and confirm your PC's IP is in the sa
 
 Open each robot's web interface in your browser:
 
-- Leader: `http://192.168.1.12` → clear errors → unlock joints → enable FCI
-- Follower: `http://192.168.1.15` → clear errors → unlock joints → enable FCI
+- Leader: `http://192.168.1.xx` → clear errors → unlock joints → enable FCI
+- Follower: `http://192.168.1.yy` → clear errors → unlock joints → enable FCI
 
-The robot light should turn **blue** (FCI active). Joints should move freely when you gently push them — this confirms gravity compensation mode is active.
+The robot light should turn **green** (FCI active). Joints should move freely when you gently push them — this confirms gravity compensation mode is active.
 
 ---
 
@@ -221,7 +193,7 @@ The robot light should turn **blue** (FCI active). Joints should move freely whe
 │                                                                  │
 │   ┌──────────────┐              ┌──────────────┐                 │
 │   │  Leader FR3  │              │ Follower FR3 │                 │
-│   │ 192.168.1.12 │              │ 192.168.1.15 │                 │
+│   │ 192.168.1.xx │              │ 192.168.1.yy │                 │
 │   │  (you move)  │              │  (records)   │                 │
 │   └──────┬───────┘              └──────┬───────┘                 │
 │          │  Ethernet                   │  Ethernet               │
@@ -258,12 +230,12 @@ x-teleop-config:
   pairs:
     - namespace: franka_teleop
       leader:
-        robot_ip: 192.168.1.12    # ← your leader robot IP
+        robot_ip: 192.168.1.xx    # ← your leader robot IP
       follower:
-        robot_ip: 192.168.1.15    # ← your follower robot IP
+        robot_ip: 192.168.1.yy    # ← your follower robot IP
 ```
 
-### Step 3 — Create the data output folder
+### Step 3 — Create the data output folder if its not already there
 
 ```bash
 mkdir -p ./franka_data
@@ -295,13 +267,6 @@ Do this for **both** robots before launching:
 docker compose -f docker-compose.with_collector.yml up
 ```
 
-Wait for this in the terminal output:
-
-```
-[franka_data_collector] FrankaDataCollector started (STATE_DIM=46)
-[franka_data_collector]   Velocity : computed from finite diff of O_T_EE
-[franka_data_collector]   Gripper  : cols 42-45
-```
 
 **Recording is now active.** Move the leader robot — the follower mirrors it and all 46 state values are saved every millisecond.
 
@@ -309,11 +274,6 @@ Wait for this in the terminal output:
 
 Press `Ctrl+C`. The final data saves automatically:
 
-```
-[franka_data_collector] Shutdown — saving final data...
-[franka_data_collector] Saved 9546 rows → franka_data/franka_follower_..._final.npy
-[franka_data_collector]   vel_vx [-0.312, 0.421]  vy [-0.289, 0.398]  vz [-0.091, 0.104]
-```
 
 Your files are now in `./franka_data/` on your PC.
 
@@ -422,80 +382,15 @@ is_grasping = total_width < 0.02   # holding an object (~0 cm)
 
 ---
 
-## 🐍 Loading Data in Python
-
-```python
-import numpy as np
-
-# Load — no ROS required
-data = np.load('franka_data/franka_follower_final.npy')
-print(data.shape)   # (N_samples, 46)
-
-# Unpack all columns
-timestamp   = data[:, 0]       # nanoseconds
-joint_pos   = data[:, 1:8]     # rad    (N, 7)
-joint_vel   = data[:, 8:15]    # rad/s  (N, 7)
-torque      = data[:, 15:22]   # Nm     (N, 7)
-torque_ext  = data[:, 22:29]   # Nm     (N, 7)
-ee_pos      = data[:, 29:32]   # m      (N, 3)  [x, y, z]
-ee_quat     = data[:, 32:36]   #        (N, 4)  [qx, qy, qz, qw]
-ee_vel      = data[:, 36:42]   # m/s    (N, 6)  [vx, vy, vz, wx, wy, wz]
-gripper_l   = data[:, 42]      # m      left finger position
-gripper_r   = data[:, 43]      # m      right finger position
-gripper_vel = data[:, 44]      # m/s    finger velocity
-gripper_f   = data[:, 45]      # N      finger force
-
-# Time axis
-t = (timestamp - timestamp[0]) * 1e-9   # seconds from start
-
-# Quick summary
-print(f"Duration  : {t[-1]:.2f} s")
-print(f"Samples   : {len(data)}")
-print(f"Frequency : {len(data)/t[-1]:.0f} Hz")
-print(f"EE vel vx : [{ee_vel[:,0].min():.3f}, {ee_vel[:,0].max():.3f}] m/s")
-
-# Detect grasp events
-total_width = gripper_l + gripper_r
-grasping    = total_width < 0.02
-print(f"Grasping  : {grasping.sum()} samples ({grasping.sum()/len(data)*100:.1f}%)")
-```
-
----
-
 ## 📈 Trajectory Visualization
 
-This repository includes an interactive visualization of the recorded end-effector trajectory.
+Sample collected visualization
 
-It provides:
-
-- Interactive 3D view of the full EE trajectory
-- Top-down (X, Y) 2D projection
-- Equal axis scaling for spatial accuracy
-- Start & End point markers
-- WebGL rendering via Plotly
-
-### 🌍 Interactive 3D + 2D Viewer
-
-Click below to explore the trajectory live in your browser — no installation needed:
-
-👉 **[https://shubhamsonkar01.github.io/franka_ros2_teleop_data_collection/outputs/html/trajectory_3d_2d.html](https://shubhamsonkar01.github.io/franka_ros2_teleop_data_collection/outputs/html/trajectory_3d_2d.html)**
 
 ### 🎥 Animation Preview
 
 ![Trajectory Animation](outputs/gifs/trajectory.gif)
 
-### 📂 Visualization Files
-
-```
-outputs/
-├── html/trajectory_3d_2d.html    ← interactive Plotly viewer (GitHub Pages)
-├── gifs/trajectory.gif           ← animation preview
-└── images/trajectory.png         ← static image
-```
-
-The HTML file is generated using Plotly and deployed via GitHub Pages. To regenerate the visualization for your own recorded data, use the provided notebook in this repository.
-
----
 
 ## ⚙️ Configuration Reference
 
@@ -506,9 +401,9 @@ x-teleop-config:
   pairs:
     - namespace: franka_teleop
       leader:
-        robot_ip: 192.168.1.12     # leader robot
+        robot_ip: 192.168.1.xx     # leader robot
       follower:
-        robot_ip: 192.168.1.15     # follower robot
+        robot_ip: 192.168.1.yy    # follower robot
 ```
 
 ### Collector parameters — `franka_data_collector/config/data_collector_params.yaml`
@@ -568,19 +463,14 @@ docker compose -f docker-compose.with_collector.yml up
 | franka_ros2 | v2.0.4 |
 | franka_description | 1.0.2 |
 | libfranka | 0.16.0 |
-| Python | 3.10 |
-
-The system is fully deterministic given identical hardware, network configuration, and these software versions.
+| Python | 3.10+ |
 
 ---
 
 ## 🔧 Troubleshooting
 
 ### Velocity is all zero in saved files
-You are running the original `data_collector_node.py`. Replace it with the version from this repo. When the fix is working, the terminal prints non-zero velocity ranges on every save:
-```
-vel_vx [-0.312, 0.421]  vy [-0.289, 0.398]  vz [-0.091, 0.104]
-```
+You are running the original `data_collector_node.py`. If you want the velocity then run `data_collector_node_with_vel_node.py`. 
 
 ### No data collected / topics not found
 ```bash
@@ -621,27 +511,6 @@ Open `http://<robot_ip>` in your browser, clear all errors in Franka Desk, unloc
 # Source the workspace inside the container
 source /ros2_ws/install/setup.bash
 ```
-
----
-
-## 📐 ROS 2 Topics Reference
-
-### Subscribed by the data collector
-
-| Topic | Message type | What is extracted |
-|-------|-------------|-------------------|
-| `/<ns>/franka_robot_state_broadcaster/measured_joint_states` | `sensor_msgs/JointState` | q, dq, tau |
-| `/<ns>/franka_robot_state_broadcaster/external_joint_torques` | `sensor_msgs/JointState` | tau_ext |
-| `/<ns>/franka_robot_state_broadcaster/robot_state` | `franka_msgs/FrankaRobotState` | O_T_EE (4×4 pose) |
-| `/<ns>/franka_gripper/joint_states` | `sensor_msgs/JointState` | finger pos, vel, effort |
-| `/franka_gripper/joint_states` | `sensor_msgs/JointState` | same — fallback topic |
-
-### Used by the gripper controller
-
-| Action server | Message type | Purpose |
-|---------------|-------------|---------|
-| `/franka_gripper/move` | `franka_msgs/action/Move` | Open / move to width |
-| `/franka_gripper/grasp` | `franka_msgs/action/Grasp` | Close with force control |
 
 ---
 
